@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>U-OCR Flow — U-Tech Project®</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   U-OCR Flow — Design System
+   Industrial Precision Theme · Dark
+   ═══════════════════════════════════════════ */
+:root {
+  --bg:          #0b0c10;
+  --surface:     #111318;
+  --surface-2:   #181b22;
+  --border:      #222530;
+  --border-hi:   #323748;
+  --amber:       #f5a623;
+  --amber-soft:  rgba(245,166,35,0.12);
+  --amber-glow:  rgba(245,166,35,0.35);
+  --teal:        #2dd4bf;
+  --teal-soft:   rgba(45,212,191,0.08);
+  --green:       #4ade80;
+  --red:         #f87171;
+  --text:        #dde1f0;
+  --text-dim:    #7a7f9a;
+  --text-muted:  #44485e;
+  --mono:        'JetBrains Mono', monospace;
+  --sans:        'Exo 2', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Subtle grid texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 48px, rgba(255,255,255,0.013) 48px, rgba(255,255,255,0.013) 49px),
+    repeating-linear-gradient(90deg, transparent, transparent 48px, rgba(255,255,255,0.013) 48px, rgba(255,255,255,0.013) 49px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ── */
+header {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 58px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(17,19,24,0.97);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--amber);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #000;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+.brand-name em { color: var(--amber); font-style: normal; }
+
+.brand-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  margin-top: 3px;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-badge {
+  padding: 4px 10px;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ── Pipeline Bar ── */
+.pipeline {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pipe-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 100%;
+  transition: background 0.3s;
+}
+
+.pipe-step.active  { background: var(--amber-soft); }
+.pipe-step.done    { opacity: 0.45; }
+
+.pipe-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-hi);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.pipe-step.active .pipe-num  { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.pipe-step.done   .pipe-num  { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+
+.pipe-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 0.3s;
+}
+.pipe-step.active .pipe-label { color: var(--amber); }
+.pipe-step.done   .pipe-label { color: var(--green); }
+
+.pipe-arrow {
+  width: 32px;
+  height: 1px;
+  background: var(--border-hi);
+  position: relative;
+  flex-shrink: 0;
+}
+.pipe-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  border: 3.5px solid transparent;
+  border-left-color: var(--border-hi);
+}
+
+/* ── Main 2-panel layout ── */
+main {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-height: 0;
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; }
+
+.panel-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  height: 44px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.panel-title .pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pip-amber { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
+.pip-teal  { background: var(--teal);  box-shadow: 0 0 6px rgba(45,212,191,0.5); }
+
+.panel-hint {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  min-height: 0;
+}
+.panel-body::-webkit-scrollbar { width: 3px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+/* ── Drop Zone ── */
+#dropZone {
+  border: 2px dashed var(--border-hi);
+  border-radius: 7px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  background: rgba(255,255,255,0.012);
+  user-select: none;
+}
+#dropZone:hover, #dropZone.drag-over {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.dz-icon  { font-size: 36px; margin-bottom: 10px; opacity: 0.35; }
+.dz-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.dz-sub   { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+.dz-key   {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+}
+
+kbd {
+  background: var(--surface-2);
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+/* ── Image Queue ── */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.queue-list::-webkit-scrollbar { width: 3px; }
+.queue-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.18s;
+  cursor: pointer;
+}
+.queue-item:hover { border-color: var(--border-hi); }
+.queue-item.active { border-color: var(--amber); background: var(--amber-soft); }
+.queue-item.done   { border-color: rgba(74,222,128,0.3); }
+.queue-item.error  { border-color: rgba(248,113,113,0.3); }
+
+.queue-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.queue-info { flex: 1; min-width: 0; }
+.queue-name {
+  font-size: 10.5px;
+  font-family: var(--mono);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.queue-state {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+.queue-item.active .queue-state { color: var(--amber); }
+.queue-item.done   .queue-state { color: var(--green); }
+.queue-item.error  .queue-state { color: var(--red); }
+.queue-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.queue-item:hover .queue-del { opacity: 1; color: var(--red); }
+
+/* ── Image preview ── */
+#imgWrap {
+  display: none;
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+#imgPreview {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+/* scan line animation */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--amber) 30%, #fff 50%, var(--amber) 70%, transparent 100%);
+  box-shadow: 0 0 12px var(--amber);
+  display: none;
+  animation: scanDown 1.8s linear infinite;
+}
+@keyframes scanDown {
+  from { top: 0; opacity: 1; }
+  to   { top: 100%; opacity: 0.4; }
+}
+.is-scanning .scan-line { display: block; }
+
+/* ── Progress ── */
+#progressWrap {
+  display: none;
+  margin-top: 12px;
+}
+.prog-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.prog-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#progBar {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.25s ease;
+  box-shadow: 0 0 10px var(--amber-glow);
+}
+
+/* ── Raw textarea ── */
+#rawText {
+  display: block;
+  width: 100%;
+  height: 200px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.75;
+  color: var(--text-dim);
+  resize: vertical;
+  outline: none;
+}
+#rawText:focus { border-color: var(--border-hi); }
+
+/* ── Rules List ── */
+.rules-wrap { margin-top: 14px; }
+.rules-head {
+  font-size: 9.5px;
+  font-family: var(--mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.rule-pat { color: var(--teal); flex: 1; }
+.rule-sep { color: var(--text-muted); margin: 0 8px; }
+.rule-desc { color: var(--text-muted); font-size: 9.5px; }
+
+/* ── Action bar ── */
+.action-bar {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-amber {
+  background: var(--amber);
+  color: #000;
+}
+.btn-amber:not(:disabled):hover {
+  background: #ffc042;
+  box-shadow: 0 3px 18px rgba(245,166,35,0.45);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-hi);
+}
+.btn-outline:not(:disabled):hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+  background: rgba(255,255,255,0.04);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid rgba(248,113,113,0.25);
+}
+.btn-danger:not(:disabled):hover {
+  background: rgba(248,113,113,0.08);
+}
+
+/* ── Right panel: address list ── */
+.addr-list { display: flex; flex-direction: column; gap: 3px; }
+
+.addr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.18s;
+}
+.addr-row:hover { border-color: var(--border-hi); }
+.addr-row:focus-within { border-color: rgba(245,166,35,0.4); background: rgba(245,166,35,0.025); }
+
+.addr-num {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+  min-width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.addr-inp {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+  min-width: 0;
+}
+.addr-inp:focus { color: var(--amber); }
+
+.addr-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.addr-row:hover .addr-del { opacity: 1; color: var(--red); }
+
+/* ── Empty state ── */
+#emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.es-icon { font-size: 30px; opacity: 0.25; }
+.es-text  { font-size: 11px; font-family: var(--mono); }
+
+/* ── Stats bar ── */
+.stats-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+
+.stat-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--amber);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 3px;
+}
+
+/* ── DB Status ── */
+.db-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.db-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.db-dot.connected { background: var(--green); box-shadow: 0 0 6px rgba(74,222,128,0.5); }
+.db-dot.saving    { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); animation: pulse 0.8s infinite; }
+.db-dot.error     { background: var(--red); }
+@keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:0.3 } }
+
+/* ── Toast notification ── */
+#toast {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  padding: 11px 18px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-hi);
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  z-index: 1000;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+  max-width: 340px;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.ok  { border-left: 3px solid var(--green); }
+#toast.err { border-left: 3px solid var(--red); }
+#toast.info { border-left: 3px solid var(--amber); }
+/* ── Image Editor Modal ── */
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7,8,12,0.92);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s;
+  backdrop-filter: blur(4px);
+}
+.editor-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.editor-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  width: min(820px, 95vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.editor-title {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--amber);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.editor-filename {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.editor-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.editor-close:hover { border-color: var(--red); color: var(--red); }
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.editor-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 16px;
+  overflow: hidden;
+  position: relative;
+}
+#editorCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  image-rendering: pixelated;
+}
+.editor-sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.editor-sidebar::-webkit-scrollbar { width: 3px; }
+.editor-sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+.editor-section-label {
+  font-size: 9.5px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+}
+.editor-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.editor-slider-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+.editor-slider-label span { color: var(--amber); min-width: 36px; text-align: right; }
+input[type=range].editor-range {
+  width: 100%;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border-hi);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range].editor-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--amber);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 6px var(--amber-glow);
+  cursor: pointer;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.preset-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 9.5px;
+  font-family: var(--mono);
+  padding: 6px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.preset-btn:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+
+.editor-footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.editor-footer .btn { flex: 1; justify-content: center; font-size: 11px; padding: 8px 12px; }
+
+/* ── Edit button in queue item ── */
+.queue-edit {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.queue-item:hover .queue-edit { opacity: 1; color: var(--teal); }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="brand">
+    <div class="brand-icon">OCR</div>
+    <div>
+      <div class="brand-name">U-OCR <em>Flow</em></div>
+      <div class="brand-tag">U-Tech Project® · Address Extractor</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="header-badge">Tesseract.js v4</div>
+    <div class="header-badge">SheetJS v0.18</div>
+    <div class="header-badge" style="color: var(--amber); border-color: rgba(245,166,35,0.35);">v2.0.0</div>
+  </div>
+</header>
+
+<!-- ═══ PIPELINE BAR ═══ -->
+<div class="pipeline">
+  <div class="pipe-step active" id="ps1">
+    <div class="pipe-num">1</div>
+    <div class="pipe-label">Upload</div>
+  </div>
+  <div class="pipe-arrow"></div>
+  <div class="pipe-step" id="ps2">
+    <div class="pipe-num">2</div>
+    <div class="pipe-label">OCR Scan</div>
+  </div>
+  <div class="pipe-arrow"></div>
+  <div class="pipe-step" id="ps3">
+    <div class="pipe-num">3</div>
+    <div class="pipe-label">Clean</div>
+  </div>
+  <div class="pipe-arrow"></div>
+  <div class="pipe-step" id="ps4">
+    <div class="pipe-num">4</div>
+    <div class="pipe-label">Export</div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<main>
+
+  <!-- LEFT: Input & OCR -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">
+        <div class="pip pip-amber"></div>
+        Input &amp; OCR Engine
+      </div>
+      <div class="panel-hint">Ctrl+Enter to run</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Drop Zone -->
+      <div id="dropZone">
+        <div class="dz-icon">📷</div>
+        <div class="dz-title">Drop or Paste images here</div>
+        <div class="dz-sub">PNG · JPG · BMP · TIFF — drop or paste multiple</div>
+        <div class="dz-key">click to browse &nbsp;·&nbsp; <kbd>Ctrl+V</kbd> to paste snip</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+
+      <!-- Paste hint bar (shown when queue is active) -->
+      <div id="pasteHint" style="display:none; margin-top:6px; padding:6px 10px; background:var(--surface-2); border:1px dashed var(--border-hi); border-radius:4px; font-size:10px; font-family:var(--mono); color:var(--text-muted); text-align:center; cursor:default;">
+        📋 <kbd style="background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;">Ctrl+V</kbd> &nbsp;paste another snip anytime · click here or press Ctrl+V
+      </div>
+
+      <!-- Image Queue -->
+      <div id="imgQueue" style="display:none; margin-top:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+          <span class="rules-head" style="margin:0;">// Image Queue</span>
+          <span id="queueCount" style="font-size:10px;font-family:var(--mono);color:var(--text-muted);"></span>
+        </div>
+        <div id="queueList" class="queue-list"></div>
+      </div>
+
+      <!-- Image preview -->
+      <div id="imgWrap">
+        <img id="imgPreview" alt="Screenshot preview">
+        <div class="scan-line"></div>
+      </div>
+
+      <!-- Progress -->
+      <div id="progressWrap">
+        <div class="prog-labels">
+          <span id="progStatus">Initializing...</span>
+          <span id="progPct">0%</span>
+        </div>
+        <div class="prog-track">
+          <div id="progBar"></div>
+        </div>
+      </div>
+
+      <!-- Raw OCR output -->
+      <textarea id="rawText" placeholder="Raw OCR output will appear here after scanning…" readonly spellcheck="false"></textarea>
+
+      <!-- Cleaning rules -->
+      <div class="rules-wrap">
+        <div class="rules-head">// Active Cleaning Pipeline</div>
+        <div class="rule">
+          <span class="rule-pat">/\[.*?\]/g</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Strip bracketed artifacts [m] [mi] [xx]</span>
+        </div>
+        <div class="rule">
+          <span class="rule-pat">/^\|+|\|+$/g</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Remove leading/trailing pipe chars</span>
+        </div>
+        <div class="rule">
+          <span class="rule-pat">/\|{2,}/g</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Collapse double pipes into space</span>
+        </div>
+        <div class="rule">
+          <span class="rule-pat">/\s*\|\s*/g</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Replace inline pipe separators</span>
+        </div>
+        <div class="rule">
+          <span class="rule-pat">/\s{2,}/g</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Normalize whitespace</span>
+        </div>
+        <div class="rule">
+          <span class="rule-pat">length &lt; 5 or /^[^a-z0-9]+$/i</span>
+          <span class="rule-sep">→</span>
+          <span class="rule-desc">Drop noise/garbage lines</span>
+        </div>
+      </div>
+
+    </div><!-- /panel-body -->
+    <div class="action-bar">
+      <button class="btn btn-amber" id="runOcrBtn" disabled>
+        ▶&nbsp; Run OCR
+      </button>
+      <button class="btn btn-outline" id="clearAllBtn">
+        ✕&nbsp; Clear
+      </button>
+    </div>
+  </div><!-- /left panel -->
+
+  <!-- RIGHT: Results -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">
+        <div class="pip pip-teal"></div>
+        Cleaned Addresses
+      </div>
+      <div class="panel-hint">Click any row to edit inline</div>
+    </div>
+    <div class="panel-body" id="rightBody">
+      <div id="emptyState">
+        <div class="es-icon">📋</div>
+        <div class="es-text">No addresses yet. Upload an image and run OCR.</div>
+      </div>
+      <div class="addr-list" id="addrList"></div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-val" id="sTotal">—</div>
+        <div class="stat-label">Addresses</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="sLines">—</div>
+        <div class="stat-label">OCR Lines</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="sFiltered">—</div>
+        <div class="stat-label">Filtered</div>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-amber" id="exportBtn" disabled>
+        ↓&nbsp; Export .xlsx
+      </button>
+      <button class="btn btn-outline" id="addRowBtn">
+        +&nbsp; Add Row
+      </button>
+      <button class="btn btn-danger" id="clearAddrBtn">
+        ✕&nbsp; Clear All
+      </button>
+    </div>
+  </div><!-- /right panel -->
+
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  U-OCR Flow · Core Application Logic
+//  U-Tech Project® | Senior Build
+// ═══════════════════════════════════════════════════════════
+
+const state = {
+  queue: [],          // [{name, src, status:'pending'|'scanning'|'done'|'error', addresses:[]}]
+  addresses: [],      // merged addresses from all done images
+  ocrLineCount: 0,
+  scanning: false,
+};
+
+// ── DOM refs ──────────────────────────────────────
+const dropZone    = document.getElementById('dropZone');
+const fileInput   = document.getElementById('fileInput');
+const imgQueue    = document.getElementById('imgQueue');
+const queueList   = document.getElementById('queueList');
+const queueCount  = document.getElementById('queueCount');
+const imgWrap     = document.getElementById('imgWrap');
+const imgPreview  = document.getElementById('imgPreview');
+const progWrap    = document.getElementById('progressWrap');
+const progBar     = document.getElementById('progBar');
+const progStatus  = document.getElementById('progStatus');
+const progPct     = document.getElementById('progPct');
+const rawTextEl   = document.getElementById('rawText');
+const runOcrBtn   = document.getElementById('runOcrBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const exportBtn   = document.getElementById('exportBtn');
+const addRowBtn   = document.getElementById('addRowBtn');
+const clearAddrBtn= document.getElementById('clearAddrBtn');
+const addrList    = document.getElementById('addrList');
+const emptyState  = document.getElementById('emptyState');
+const sTotal      = document.getElementById('sTotal');
+const sLines      = document.getElementById('sLines');
+const sFiltered   = document.getElementById('sFiltered');
+
+// ── Pipeline helper ───────────────────────────────
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('ps' + i);
+    el.classList.remove('active', 'done');
+    if (i < n)  el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  }
+}
+
+// ── Toast ─────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ── Add files to queue ────────────────────────────
+function addFilesToQueue(files) {
+  const valid = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!valid.length) { toast('No valid image files found.', 'err'); return; }
+
+  let loaded = 0;
+  valid.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      state.queue.push({ name: file.name, src: e.target.result, status: 'pending', addresses: [] });
+      loaded++;
+      if (loaded === valid.length) {
+        renderQueue();
+        runOcrBtn.disabled = false;
+        setStep(2);
+        toast(`${valid.length} image${valid.length > 1 ? 's' : ''} added to queue.`, 'info');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Add a raw blob/dataURL image to queue (for paste) ─
+function addImageBlobToQueue(blob, name) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.queue.push({ name, src: e.target.result, status: 'pending', addresses: [] });
+    renderQueue();
+    runOcrBtn.disabled = false;
+    setStep(2);
+    toast(`📋 Pasted "${name}" — ready to scan.`, 'info');
+  };
+  reader.readAsDataURL(blob);
+}
+
+// ── Global paste handler (Ctrl+V anywhere on page) ─
+let pasteCount = 0;
+document.addEventListener('paste', (e) => {
+  // Skip if user is typing in an input/textarea (except rawText which is readonly)
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (tag === 'input' || (tag === 'textarea' && document.activeElement.id !== 'rawText')) return;
+  // Skip if editor modal is open
+  if (document.getElementById('editorOverlay').classList.contains('open')) return;
+
+  const items = Array.from(e.clipboardData?.items || []);
+  const imageItems = items.filter(it => it.type.startsWith('image/'));
+
+  if (imageItems.length === 0) return;
+
+  e.preventDefault();
+  imageItems.forEach(it => {
+    const blob = it.getAsFile();
+    if (!blob) return;
+    pasteCount++;
+    const ext  = blob.type.split('/')[1] || 'png';
+    const name = `paste-${pasteCount}.${ext}`;
+    addImageBlobToQueue(blob, name);
+  });
+});
+
+// ── Paste hint bar click → focus page so Ctrl+V works ─
+document.addEventListener('DOMContentLoaded', () => {
+  const hint = document.getElementById('pasteHint');
+  if (hint) hint.addEventListener('click', () => { document.body.focus(); toast('Ready — press Ctrl+V to paste your snip.', 'info'); });
+});
+
+// ── Render queue ──────────────────────────────────
+function renderQueue() {
+  if (state.queue.length === 0) {
+    imgQueue.style.display = 'none';
+    imgWrap.style.display  = 'none';
+    dropZone.style.display = '';
+    document.getElementById('pasteHint').style.display = 'none';
+    return;
+  }
+
+  dropZone.style.display = 'none';
+  imgQueue.style.display = 'block';
+  document.getElementById('pasteHint').style.display = 'block';
+
+  const pending = state.queue.filter(q => q.status === 'pending').length;
+  const done    = state.queue.filter(q => q.status === 'done').length;
+  queueCount.textContent = `${done}/${state.queue.length} scanned · ${pending} pending`;
+
+  queueList.innerHTML = '';
+  state.queue.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'queue-item ' + item.status;
+
+    const thumb = document.createElement('img');
+    thumb.className = 'queue-thumb';
+    thumb.src = item.src;
+
+    const info = document.createElement('div');
+    info.className = 'queue-info';
+
+    const name = document.createElement('div');
+    name.className = 'queue-name';
+    name.textContent = item.name;
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'queue-state';
+    const statusMap = { pending: '⏳ Pending', scanning: '🔄 Scanning…', done: `✓ ${item.addresses.length} addresses`, error: '✗ Failed' };
+    statusEl.textContent = statusMap[item.status] || item.status;
+
+    info.appendChild(name);
+    info.appendChild(statusEl);
+
+    const del = document.createElement('button');
+    del.className = 'queue-del';
+    del.textContent = '✕';
+    del.title = 'Remove from queue';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.queue.splice(idx, 1);
+      rebuildAddresses();
+      renderQueue();
+      renderAddresses();
+      updateStats();
+      if (state.queue.length === 0) runOcrBtn.disabled = true;
+    });
+
+    const edit = document.createElement('button');
+    edit.className = 'queue-edit';
+    edit.textContent = '✏';
+    edit.title = 'Enhance image';
+    edit.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditor(idx);
+    });
+
+    // Click to preview
+    div.addEventListener('click', () => {
+      imgPreview.src = item.src;
+      imgWrap.style.display = 'block';
+      if (item.status === 'done') rawTextEl.value = item.rawText || '';
+    });
+
+    div.appendChild(thumb);
+    div.appendChild(info);
+    div.appendChild(edit);
+    div.appendChild(del);
+    queueList.appendChild(div);
+  });
+}
+
+// ── Rebuild merged addresses from all done items ──
+function rebuildAddresses() {
+  state.addresses = [];
+  state.ocrLineCount = 0;
+  state.queue.forEach(item => {
+    if (item.status === 'done') {
+      state.addresses.push(...item.addresses);
+      state.ocrLineCount += item.lineCount || 0;
+    }
+  });
+}
+
+// ── File handling ─────────────────────────────────
+dropZone.addEventListener('click',     () => fileInput.click());
+fileInput.addEventListener('change',   (e) => { addFilesToQueue(e.target.files); fileInput.value = ''; });
+dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',      (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); addFilesToQueue(e.dataTransfer.files); });
+// Drop on queue area to add more
+imgQueue.addEventListener('dragover',  (e) => e.preventDefault());
+imgQueue.addEventListener('drop',      (e) => { e.preventDefault(); addFilesToQueue(e.dataTransfer.files); });
+
+// ── Cleaning Pipeline ─────────────────────────────
+function cleanLines(raw) {
+  const lines = raw.split('\n');
+  const kept = [];
+
+  for (let line of lines) {
+    line = line.replace(/\[.*?\]/g, '');
+    line = line.replace(/^\|+|\|+$/g, '');
+    line = line.replace(/\|{2,}/g, ' ');
+    line = line.replace(/\s*\|\s*/g, ' ');
+    line = line.replace(/\s{2,}/g, ' ').trim();
+    if (line.length < 5) continue;
+    if (/^[^a-zA-Z0-9]+$/.test(line)) continue;
+    kept.push(line);
+  }
+
+  return kept;
+}
+
+// ── Convert data URL to Blob (avoids blob:// CORS) ─
+function dataURLtoBlob(dataURL) {
+  const [header, base64] = dataURL.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const binary = atob(base64);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+  return new Blob([array], { type: mime });
+}
+
+// ── OCR — process all pending images ─────────────
+runOcrBtn.addEventListener('click', async () => {
+  const pending = state.queue.filter(q => q.status === 'pending');
+  if (!pending.length || state.scanning) return;
+
+  state.scanning = true;
+  runOcrBtn.disabled = true;
+  progWrap.style.display = 'block';
+  setStep(2);
+
+  for (let i = 0; i < state.queue.length; i++) {
+    const item = state.queue[i];
+    if (item.status !== 'pending') continue;
+
+    item.status = 'scanning';
+    renderQueue();
+
+    // Show current image
+    imgPreview.src = item.src;
+    imgWrap.style.display = 'block';
+    imgWrap.classList.add('is-scanning');
+
+    progBar.style.width = '0%';
+    progStatus.textContent = `Scanning ${i + 1}/${state.queue.length}: ${item.name}`;
+    progPct.textContent = '0%';
+    rawTextEl.value = '';
+
+    try {
+      // Convert data URL → Blob to avoid blob:// CORS in sandboxed environments
+      const blob = dataURLtoBlob(item.src);
+
+      const result = await Tesseract.recognize(blob, 'eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            const pct = Math.round(m.progress * 100);
+            progBar.style.width = pct + '%';
+            progPct.textContent = pct + '%';
+          }
+        }
+      });
+
+      const raw = result.data.text;
+      item.rawText  = raw;
+      rawTextEl.value = raw;
+      const addresses = cleanLines(raw);
+      item.addresses = addresses;
+      item.lineCount = raw.split('\n').length;
+      item.status = 'done';
+
+      imgWrap.classList.remove('is-scanning');
+      progBar.style.width = '100%';
+
+    } catch (err) {
+      item.status = 'error';
+      imgWrap.classList.remove('is-scanning');
+      toast(`✗ Failed on ${item.name}: ${err.message}`, 'err');
+    }
+
+    renderQueue();
+  }
+
+  // Rebuild merged result
+  rebuildAddresses();
+  renderAddresses();
+  updateStats();
+
+  const totalDone = state.queue.filter(q => q.status === 'done').length;
+  progStatus.textContent = `✓ ${totalDone} image${totalDone !== 1 ? 's' : ''} scanned`;
+  setStep(state.addresses.length > 0 ? 4 : 3);
+  exportBtn.disabled = state.addresses.length === 0;
+  runOcrBtn.disabled = false;
+  state.scanning = false;
+
+  // Update button label if more images could be added
+  runOcrBtn.innerHTML = '▶&nbsp; Run OCR';
+  toast(`✓ Done — ${state.addresses.length} total addresses from ${totalDone} image${totalDone !== 1 ? 's' : ''}.`, 'ok');
+});
+
+// ── Render address list ───────────────────────────
+function renderAddresses() {
+  addrList.innerHTML = '';
+
+  if (state.addresses.length === 0) {
+    emptyState.style.display = 'flex';
+    exportBtn.disabled = true;
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  state.addresses.forEach((addr, idx) => {
+    const row = document.createElement('div');
+    row.className = 'addr-row';
+
+    const num = document.createElement('div');
+    num.className = 'addr-num';
+    num.textContent = String(idx + 1).padStart(2, '0');
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'addr-inp';
+    inp.value = addr;
+    inp.spellcheck = false;
+    inp.addEventListener('input', (e) => {
+      state.addresses[idx] = e.target.value;
+      updateStats();
+    });
+
+    const del = document.createElement('button');
+    del.className = 'addr-del';
+    del.textContent = '✕';
+    del.title = 'Remove row';
+    del.addEventListener('click', () => {
+      state.addresses.splice(idx, 1);
+      renderAddresses();
+      updateStats();
+    });
+
+    row.appendChild(num);
+    row.appendChild(inp);
+    row.appendChild(del);
+    addrList.appendChild(row);
+  });
+
+  exportBtn.disabled = false;
+}
+
+// ── Stats ─────────────────────────────────────────
+function updateStats() {
+  const active = state.addresses.filter(a => a.trim().length > 0).length;
+  sTotal.textContent    = active || '—';
+  sLines.textContent    = state.ocrLineCount || '—';
+  sFiltered.textContent = state.ocrLineCount
+    ? Math.max(0, state.ocrLineCount - state.addresses.length)
+    : '—';
+}
+
+// ── Add blank row ─────────────────────────────────
+addRowBtn.addEventListener('click', () => {
+  state.addresses.push('');
+  renderAddresses();
+  updateStats();
+  // Focus the new row
+  const inputs = addrList.querySelectorAll('.addr-inp');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+});
+
+// ── Clear addresses ───────────────────────────────
+clearAddrBtn.addEventListener('click', () => {
+  if (state.addresses.length === 0) return;
+  state.addresses = [];
+  renderAddresses();
+  updateStats();
+  exportBtn.disabled = true;
+  toast('Address list cleared.', 'info');
+});
+
+// ── Clear everything ──────────────────────────────
+clearAllBtn.addEventListener('click', () => {
+  state.queue        = [];
+  state.addresses    = [];
+  state.ocrLineCount = 0;
+  state.scanning     = false;
+
+  imgPreview.src          = '';
+  imgWrap.style.display   = 'none';
+  imgQueue.style.display  = 'none';
+  dropZone.style.display  = '';
+  imgWrap.classList.remove('is-scanning');
+  rawTextEl.value         = '';
+  progWrap.style.display  = 'none';
+  progBar.style.width     = '0%';
+  runOcrBtn.disabled      = true;
+  exportBtn.disabled      = true;
+  fileInput.value         = '';
+
+  renderAddresses();
+  sTotal.textContent = sLines.textContent = sFiltered.textContent = '—';
+  setStep(1);
+  toast('Workspace cleared.', 'info');
+});
+
+// ── Export to Excel ───────────────────────────────
+exportBtn.addEventListener('click', () => {
+  // Sync any in-progress edits from input fields
+  addrList.querySelectorAll('.addr-inp').forEach((inp, i) => {
+    if (i < state.addresses.length) state.addresses[i] = inp.value;
+  });
+
+  const final = state.addresses.filter(a => a.trim().length > 0);
+  if (final.length === 0) {
+    toast('Nothing to export — address list is empty.', 'err');
+    return;
+  }
+
+  // Build workbook: single column, header in row 1
+  const wsData = [['Address'], ...final.map(a => [a.trim()])];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column width
+  ws['!cols'] = [{ wch: 90 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Addresses');
+
+  const ts = new Date().toISOString().replace(/[T:.Z]/g, '-').slice(0, 17);
+  XLSX.writeFile(wb, `addresses_${ts}.xlsx`);
+
+  toast(`✓ Exported ${final.length} addresses → addresses_${ts}.xlsx`, 'ok');
+  setStep(4);
+  document.getElementById('ps4').classList.add('active');
+});
+
+// ── Keyboard shortcut: Ctrl/Cmd + Enter → Run OCR ─
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (!runOcrBtn.disabled) runOcrBtn.click();
+    e.preventDefault();
+  }
+});
+
+// ── Init ──────────────────────────────────────────
+setStep(1);
+</script>
+
+<!-- ═══ IMAGE EDITOR MODAL ═══ -->
+<div class="editor-overlay" id="editorOverlay">
+  <div class="editor-modal">
+    <div class="editor-header">
+      <div>
+        <div class="editor-title">// Image Enhancement Editor</div>
+        <div class="editor-filename" id="editorFilename">—</div>
+      </div>
+      <button class="editor-close" id="editorClose">✕</button>
+    </div>
+    <div class="editor-body">
+      <div class="editor-canvas-wrap">
+        <canvas id="editorCanvas"></canvas>
+      </div>
+      <div class="editor-sidebar">
+        <div>
+          <div class="editor-section-label">Quick Presets</div>
+          <div class="preset-grid">
+            <button class="preset-btn" data-preset="original">Original</button>
+            <button class="preset-btn" data-preset="auto">Auto Enhance</button>
+            <button class="preset-btn" data-preset="sharp">Sharpen</button>
+            <button class="preset-btn" data-preset="bw">B&amp;W OCR</button>
+            <button class="preset-btn" data-preset="hicon">Hi-Contrast</button>
+            <button class="preset-btn" data-preset="denoise">Denoise</button>
+          </div>
+        </div>
+        <div>
+          <div class="editor-section-label">Basic Adjustments</div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Brightness <span id="valBrightness">0</span></div>
+            <input type="range" class="editor-range" id="slBrightness" min="-100" max="100" value="0">
+          </div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Contrast <span id="valContrast">0</span></div>
+            <input type="range" class="editor-range" id="slContrast" min="-100" max="100" value="0">
+          </div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Saturation <span id="valSaturation">0</span></div>
+            <input type="range" class="editor-range" id="slSaturation" min="-100" max="100" value="0">
+          </div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Exposure <span id="valExposure">0</span></div>
+            <input type="range" class="editor-range" id="slExposure" min="-100" max="100" value="0">
+          </div>
+        </div>
+        <div>
+          <div class="editor-section-label">Clarity &amp; Sharpness</div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Sharpness <span id="valSharpness">0</span></div>
+            <input type="range" class="editor-range" id="slSharpness" min="0" max="10" value="0">
+          </div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Upscale <span id="valScale">1×</span></div>
+            <input type="range" class="editor-range" id="slScale" min="1" max="3" step="0.5" value="1">
+          </div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Threshold <span id="valThreshold">Off</span></div>
+            <input type="range" class="editor-range" id="slThreshold" min="0" max="255" value="0">
+            <div style="font-size:9px;color:var(--text-muted);font-family:var(--mono);">0 = off · binarize text for OCR</div>
+          </div>
+        </div>
+        <div>
+          <div class="editor-section-label">Noise Reduction</div>
+          <div class="editor-slider-row">
+            <div class="editor-slider-label">Blur <span id="valBlur">0</span></div>
+            <input type="range" class="editor-range" id="slBlur" min="0" max="5" step="0.5" value="0">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="editor-footer">
+      <button class="btn btn-outline" id="editorReset" style="flex:1;justify-content:center;font-size:11px;">↺ Reset</button>
+      <button class="btn btn-outline" id="editorCancel" style="flex:1;justify-content:center;font-size:11px;">Cancel</button>
+      <button class="btn btn-amber" id="editorApply" style="flex:2;justify-content:center;font-size:11px;">✓ Apply &amp; Rescan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  IMAGE ENHANCEMENT EDITOR
+// ═══════════════════════════════════════════════════
+
+const editorOverlay  = document.getElementById('editorOverlay');
+const editorCanvas   = document.getElementById('editorCanvas');
+const editorFilename = document.getElementById('editorFilename');
+const editorClose    = document.getElementById('editorClose');
+const editorCancel   = document.getElementById('editorCancel');
+const editorReset    = document.getElementById('editorReset');
+const editorApply    = document.getElementById('editorApply');
+const ctx            = editorCanvas.getContext('2d');
+
+// Current editor state
+let editorItem   = null;  // queue item being edited
+let editorItemIdx= -1;
+let sourceImg    = new Image();
+
+const sliders = {
+  brightness: document.getElementById('slBrightness'),
+  contrast:   document.getElementById('slContrast'),
+  saturation: document.getElementById('slSaturation'),
+  exposure:   document.getElementById('slExposure'),
+  sharpness:  document.getElementById('slSharpness'),
+  scale:      document.getElementById('slScale'),
+  threshold:  document.getElementById('slThreshold'),
+  blur:       document.getElementById('slBlur'),
+};
+const displays = {
+  brightness: document.getElementById('valBrightness'),
+  contrast:   document.getElementById('valContrast'),
+  saturation: document.getElementById('valSaturation'),
+  exposure:   document.getElementById('valExposure'),
+  sharpness:  document.getElementById('valSharpness'),
+  scale:      document.getElementById('valScale'),
+  threshold:  document.getElementById('valThreshold'),
+  blur:       document.getElementById('valBlur'),
+};
+
+function getVals() {
+  return {
+    brightness: +sliders.brightness.value,
+    contrast:   +sliders.contrast.value,
+    saturation: +sliders.saturation.value,
+    exposure:   +sliders.exposure.value,
+    sharpness:  +sliders.sharpness.value,
+    scale:      +sliders.scale.value,
+    threshold:  +sliders.threshold.value,
+    blur:       +sliders.blur.value,
+  };
+}
+
+function resetSliders() {
+  sliders.brightness.value = 0;
+  sliders.contrast.value   = 0;
+  sliders.saturation.value = 0;
+  sliders.exposure.value   = 0;
+  sliders.sharpness.value  = 0;
+  sliders.scale.value      = 1;
+  sliders.threshold.value  = 0;
+  sliders.blur.value       = 0;
+  updateDisplays();
+}
+
+function updateDisplays() {
+  displays.brightness.textContent = sliders.brightness.value;
+  displays.contrast.textContent   = sliders.contrast.value;
+  displays.saturation.textContent = sliders.saturation.value;
+  displays.exposure.textContent   = sliders.exposure.value;
+  displays.sharpness.textContent  = sliders.sharpness.value;
+  displays.scale.textContent      = sliders.scale.value + '×';
+  displays.threshold.textContent  = +sliders.threshold.value === 0 ? 'Off' : sliders.threshold.value;
+  displays.blur.textContent       = sliders.blur.value;
+}
+
+Object.values(sliders).forEach(sl => {
+  sl.addEventListener('input', () => { updateDisplays(); applyFilters(); });
+});
+
+// ── Preset definitions ────────────────────────────
+const PRESETS = {
+  original: { brightness:0, contrast:0, saturation:0, exposure:0, sharpness:0, scale:1, threshold:0, blur:0 },
+  auto:     { brightness:15, contrast:25, saturation:-10, exposure:10, sharpness:3, scale:1.5, threshold:0, blur:0 },
+  sharp:    { brightness:0, contrast:20, saturation:0, exposure:0, sharpness:8, scale:2, threshold:0, blur:0 },
+  bw:       { brightness:10, contrast:40, saturation:-100, exposure:5, sharpness:4, scale:1.5, threshold:128, blur:0 },
+  hicon:    { brightness:0, contrast:70, saturation:-20, exposure:0, sharpness:5, scale:1, threshold:0, blur:0 },
+  denoise:  { brightness:5, contrast:15, saturation:0, exposure:5, sharpness:2, scale:1.5, threshold:0, blur:1.5 },
+};
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const p = PRESETS[btn.dataset.preset];
+    if (!p) return;
+    Object.entries(p).forEach(([k, v]) => { sliders[k].value = v; });
+    updateDisplays();
+    applyFilters();
+  });
+});
+
+// ── Core pixel processing ─────────────────────────
+function applyFilters() {
+  if (!sourceImg.src) return;
+  const v = getVals();
+
+  const scale  = v.scale;
+  const width  = Math.round(sourceImg.naturalWidth  * scale);
+  const height = Math.round(sourceImg.naturalHeight * scale);
+
+  editorCanvas.width  = width;
+  editorCanvas.height = height;
+
+  // 1. Draw scaled source
+  ctx.filter = v.blur > 0 ? `blur(${v.blur}px)` : 'none';
+  ctx.drawImage(sourceImg, 0, 0, width, height);
+  ctx.filter = 'none';
+
+  // 2. Get pixel data
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  const brightness = v.brightness;
+  const contrast   = v.contrast;
+  const saturation = (v.saturation + 100) / 100;   // 0..2
+  const exposure   = v.exposure / 100;              // -1..1
+  const threshold  = v.threshold;                   // 0=off
+  const sharpness  = v.sharpness;
+
+  // Contrast factor
+  const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i], g = data[i+1], b = data[i+2];
+
+    // Exposure (multiply)
+    r = r * (1 + exposure);
+    g = g * (1 + exposure);
+    b = b * (1 + exposure);
+
+    // Brightness
+    r += brightness; g += brightness; b += brightness;
+
+    // Contrast
+    r = cFactor * (r - 128) + 128;
+    g = cFactor * (g - 128) + 128;
+    b = cFactor * (b - 128) + 128;
+
+    // Saturation (via luminance)
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    r = lum + saturation * (r - lum);
+    g = lum + saturation * (g - lum);
+    b = lum + saturation * (b - lum);
+
+    // Clamp
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+
+    // Threshold / binarize
+    if (threshold > 0) {
+      const gray = 0.299*r + 0.587*g + 0.114*b;
+      const bin  = gray >= threshold ? 255 : 0;
+      r = g = b = bin;
+    }
+
+    data[i]   = r;
+    data[i+1] = g;
+    data[i+2] = b;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // 3. Sharpness via unsharp mask (convolution)
+  if (sharpness > 0) {
+    applyUnsharpMask(ctx, width, height, sharpness);
+  }
+}
+
+// ── Unsharp mask (sharpening convolution) ────────
+function applyUnsharpMask(ctx, w, h, amount) {
+  const src    = ctx.getImageData(0, 0, w, h);
+  const dst    = ctx.createImageData(w, h);
+  const s      = src.data;
+  const d      = dst.data;
+  const radius = 1;
+  const strength = amount / 10;
+
+  // Simple 3×3 laplacian sharpen
+  const kernel = [
+    0, -1,  0,
+   -1,  4+1/strength, -1,
+    0, -1,  0
+  ];
+  const kSum = kernel.reduce((a,b) => a+b, 0) || 1;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r=0, g=0, b=0, ki=0;
+      for (let ky = -radius; ky <= radius; ky++) {
+        for (let kx = -radius; kx <= radius; kx++) {
+          const px = Math.min(w-1, Math.max(0, x+kx));
+          const py = Math.min(h-1, Math.max(0, y+ky));
+          const idx = (py*w + px)*4;
+          const k = kernel[ki++];
+          r += s[idx]   * k;
+          g += s[idx+1] * k;
+          b += s[idx+2] * k;
+        }
+      }
+      const oi = (y*w + x)*4;
+      d[oi]   = Math.max(0, Math.min(255, r / kSum));
+      d[oi+1] = Math.max(0, Math.min(255, g / kSum));
+      d[oi+2] = Math.max(0, Math.min(255, b / kSum));
+      d[oi+3] = s[oi+3];
+    }
+  }
+  ctx.putImageData(dst, 0, 0);
+}
+
+// ── Open editor for a queue item ──────────────────
+function openEditor(idx) {
+  editorItemIdx = idx;
+  editorItem    = state.queue[idx];
+  editorFilename.textContent = editorItem.name;
+
+  resetSliders();
+
+  sourceImg = new Image();
+  sourceImg.onload = () => {
+    applyFilters();
+    editorOverlay.classList.add('open');
+  };
+  // Use enhanced src if already edited, else original
+  sourceImg.src = editorItem.originalSrc || editorItem.src;
+}
+
+// ── Close editor ──────────────────────────────────
+function closeEditor() {
+  editorOverlay.classList.remove('open');
+}
+editorClose.addEventListener('click',  closeEditor);
+editorCancel.addEventListener('click', closeEditor);
+editorOverlay.addEventListener('click', (e) => { if (e.target === editorOverlay) closeEditor(); });
+
+// ── Reset ─────────────────────────────────────────
+editorReset.addEventListener('click', () => {
+  resetSliders();
+  applyFilters();
+});
+
+// ── Apply: export canvas → update item src → rescan ──
+editorApply.addEventListener('click', async () => {
+  if (!editorItem) return;
+
+  // Save original src once
+  if (!editorItem.originalSrc) {
+    editorItem.originalSrc = editorItem.src;
+  }
+
+  // Export enhanced canvas as data URL
+  const enhanced = editorCanvas.toDataURL('image/png');
+  editorItem.src    = enhanced;
+  editorItem.status = 'pending';
+  editorItem.addresses = [];
+
+  closeEditor();
+  renderQueue();
+
+  // Update preview
+  imgPreview.src = enhanced;
+  imgWrap.style.display = 'block';
+
+  toast(`✓ Enhancement applied to "${editorItem.name}" — rescanning…`, 'info');
+
+  // Auto-rescan just this item
+  await scanSingleItem(editorItemIdx);
+
+  rebuildAddresses();
+  renderAddresses();
+  updateStats();
+  renderQueue();
+  exportBtn.disabled = state.addresses.length === 0;
+});
+
+// ── Scan a single item by index ───────────────────
+async function scanSingleItem(idx) {
+  const item = state.queue[idx];
+  if (!item) return;
+
+  item.status = 'scanning';
+  renderQueue();
+
+  imgPreview.src = item.src;
+  imgWrap.style.display = 'block';
+  imgWrap.classList.add('is-scanning');
+  progWrap.style.display = 'block';
+  progBar.style.width = '0%';
+  progStatus.textContent = `Scanning: ${item.name}`;
+  progPct.textContent = '0%';
+  rawTextEl.value = '';
+
+  try {
+    // Convert data URL → Blob to avoid blob:// CORS issues in sandboxed environments
+    const blob = dataURLtoBlob(item.src);
+
+    const result = await Tesseract.recognize(blob, 'eng', {
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          progBar.style.width = pct + '%';
+          progPct.textContent = pct + '%';
+        }
+      }
+    });
+    item.rawText   = result.data.text;
+    item.addresses = cleanLines(result.data.text);
+    item.lineCount = result.data.text.split('\n').length;
+    item.status    = 'done';
+    rawTextEl.value = item.rawText;
+    progBar.style.width = '100%';
+    progStatus.textContent = `✓ ${item.addresses.length} addresses found`;
+    toast(`✓ Rescan complete — ${item.addresses.length} addresses from "${item.name}".`, 'ok');
+  } catch (err) {
+    item.status = 'error';
+    toast(`✗ Rescan failed: ${err.message}`, 'err');
+  }
+  imgWrap.classList.remove('is-scanning');
+}
+</script>
+</body>
+</html>
+</script>
+</body>
+</html>
